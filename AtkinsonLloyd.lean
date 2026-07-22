@@ -1,4 +1,3 @@
-import AtkinsonLloyd.Basic
 import AtkinsonLloyd.Defs
 import AtkinsonLloyd.Flanders
 import AtkinsonLloyd.Dichotomy

@@ -13,7 +13,10 @@ The two general headline results —
 fully proved under the sharp hypothesis `#K > r`.
 `#print axioms atkinson_lloyd_of_lt_card` reports only the three standard axioms
 `[propext, Classical.choice, Quot.sound]`; there are no `sorry`s and no extra
-axioms anywhere in the development.
+axioms anywhere in the development.  Rectangular forms of both,
+[`flanders_rect_le`](AtkinsonLloyd/Rect.lean) and
+[`atkinson_lloyd_rect_of_lt_card`](AtkinsonLloyd/Rect.lean), are derived from
+them.
 
 > Toolchain: `leanprover/lean4:v4.33.0-rc1` · Mathlib `v4.33.0-rc1`
 
@@ -65,6 +68,42 @@ Here `BoundedRank V r` means every matrix of `V` has rank `≤ r`, and
 `CommonNullspace V r` asserts the existence of a common `(n − r)`-dimensional
 null space (see [`AtkinsonLloyd/Defs.lean`](AtkinsonLloyd/Defs.lean)).
 
+### The rectangular forms
+
+Flanders' theorem is originally about linear transformations between spaces of
+different dimension, and applications of both theorems are rectangular —
+bounded-rank spaces arise precisely from maps between spaces of unequal
+dimension. [`AtkinsonLloyd/Rect.lean`](AtkinsonLloyd/Rect.lean) supplies that
+form:
+
+```lean
+theorem flanders_rect_le {a b r : ℕ}
+    (hK : (r : Cardinal) < Cardinal.mk K)
+    (V : Submodule K (Matrix (Fin a) (Fin b) K)) (hbound : BoundedRank V r) :
+    finrank K V ≤ r * max a b
+
+theorem atkinson_lloyd_rect_of_lt_card {a b r : ℕ}
+    (hK : (r : Cardinal) < Cardinal.mk K) (hr : 1 ≤ r) (hrn : r < max a b)
+    (V : Submodule K (Matrix (Fin a) (Fin b) K)) (hbound : BoundedRank V r)
+    (hdim : max a b * r - r + 1 < finrank K V) :
+    HasCommonKernelRect V (b - r) ∨
+      HasCommonKernelRect (V.map (transposeRectₗ a b).toLinearMap) (a - r)
+```
+
+The bridge is **zero-padding** into `N × N` matrices with `N = max a b`, written
+as a matrix sandwich `pad M = incl ha * M * (incl hb)ᵀ` against inclusions cut
+out of the identity.  Written that way the rank bound `rank (pad M) ≤ rank M` is
+immediate from `Matrix.rank_mul_le_left` and `Matrix.rank_mul_le_right`, with no
+block-decomposition rank lemma; only that *upper* bound is ever needed.  The
+Atkinson–Lloyd conclusion descends by pulling the padded common nullspace `W`
+back along the inclusion `Kᵇ → Kᴺ`: the pullback is the kernel of that inclusion
+followed by the quotient by `W`, so rank–nullity bounds its dimension below by
+`b − (N − dim W) = b − r`, and a subspace of dimension exactly `b − r` is
+selected from it.
+
+`flanders_rect_le'` and `atkinson_lloyd_rect` are the same statements with the
+cardinality hypothesis discharged by `[Infinite K]`.
+
 ---
 
 ## Project layout
@@ -76,6 +115,7 @@ null space (see [`AtkinsonLloyd/Defs.lean`](AtkinsonLloyd/Defs.lean)).
 | [`AtkinsonLloyd/Dichotomy.lean`](AtkinsonLloyd/Dichotomy.lean) | The normalization chain and common-kernel transport, the alternating coupling, the refined count, the second-order (Krylov) relations, the inverse transitivity lemma, the frame dichotomy, and the capstone `atkinson_lloyd`. |
 | [`AtkinsonLloyd/Minors.lean`](AtkinsonLloyd/Minors.lean) | The minors characterization of rank and rank invariance under field embeddings. |
 | [`AtkinsonLloyd/General.lean`](AtkinsonLloyd/General.lean) | Scalar extension, finite-grid rank transfer, kernel descent, and the general `#K > r` theorems. |
+| [`AtkinsonLloyd/Rect.lean`](AtkinsonLloyd/Rect.lean) | Zero-padding, `HasCommonKernelRect`, and the **rectangular** Flanders and Atkinson–Lloyd theorems. |
 
 ---
 
@@ -85,7 +125,8 @@ null space (see [`AtkinsonLloyd/Defs.lean`](AtkinsonLloyd/Defs.lean)).
   Quart. J. Math. Oxford (2) **31** (1980), 253–262. — The original theorem.
 - **H. Flanders**, *On spaces of linear transformations with bounded rank*,
   J. London Math. Soc. **37** (1962), 10–16. — The dimension bound `dim V ≤ n·r`
-  and its block relations (`D = 0`, `C·B = 0`).
+  and its block relations (`D = 0`, `C·B = 0`); stated there for transformations
+  between spaces of different dimension, which is `flanders_rect_le`.
 - **C. de Seguins Pazzis**, *The classification of large spaces of matrices with
   bounded rank*, Israel J. Math. **208** (2015), 219–259
   ([arXiv:1004.0298](https://arxiv.org/abs/1004.0298)). — Self-contained modern
@@ -127,6 +168,8 @@ kernel. The correspondence:
 | Atkinson–Lloyd theorem (infinite-field core) | `atkinson_lloyd` | `Dichotomy.lean` |
 | Rank-bound transfer under `#K > r` | `boundedRank_scalarExtension` | `General.lean` |
 | General Atkinson–Lloyd theorem | `atkinson_lloyd_of_lt_card` | `General.lean` |
+| Flanders' bound for `a × b` matrices, `dim V ≤ r·max(a,b)` | `flanders_rect_le` | `Rect.lean` |
+| Atkinson–Lloyd for `a × b` matrices | `atkinson_lloyd_rect_of_lt_card` | `Rect.lean` |
 
 ### Infinite-field core
 
@@ -184,10 +227,12 @@ lake build           # build the AtkinsonLloyd library
 To confirm the results are `sorry`-free and axiom-clean:
 
 ```lean
-import AtkinsonLloyd.General
+import AtkinsonLloyd
 open AtkinsonLloyd
-#print axioms flanders_le_of_lt_card    -- [propext, Classical.choice, Quot.sound]
-#print axioms atkinson_lloyd_of_lt_card -- [propext, Classical.choice, Quot.sound]
+#print axioms flanders_le_of_lt_card         -- [propext, Classical.choice, Quot.sound]
+#print axioms atkinson_lloyd_of_lt_card      -- [propext, Classical.choice, Quot.sound]
+#print axioms flanders_rect_le               -- [propext, Classical.choice, Quot.sound]
+#print axioms atkinson_lloyd_rect_of_lt_card -- [propext, Classical.choice, Quot.sound]
 ```
 
 ---
